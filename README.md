@@ -47,7 +47,7 @@ that channel would eliminate under a fully automated zone.
   those who are poor. ABS is close to value-neutral for the sport in aggregate.
 - **Total value in motion (sum of absolute values): ~52 runs** across 141
   catchers (~61 runs in the fuller 2025 season). If ABS fully took over human umpires,
-  this many runs would disappear in a season league-wide.
+  this is the framing value at risk of being eliminated or redistributed.
 - Framing value is **highly unevenly distributed**: a handful of elite
   and poor framers account for a disproportionate share of the total,
   while the median catcher's framing value is close to zero. Most catchers hover around zero.
