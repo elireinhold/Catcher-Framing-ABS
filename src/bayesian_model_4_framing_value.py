@@ -7,33 +7,7 @@ import numpy as np
 import pandas as pd
 import pymc as pm
 
-
-# ============================================================
-# MODEL 4: CATCHER FRAMING VALUE VS. TRUE AUTOMATED ZONE
-#
-# This model predicts the UMPIRE'S ACTUAL CALL (called_strike),
-# controlling for the TRUE automated-zone outcome (automated_strike,
-# built from real batter-specific sz_top/sz_bot -- same construction
-# as Model 2/3) plus pitch context. The catcher_effect this yields
-# is directional and interpretable as:
-#
-#   log-odds shift in strike-call probability attributable to this
-#   catcher, AFTER controlling for whether the pitch was truly a
-#   ball or a strike.
-#
-# Under a fully automated zone, the call depends ONLY on
-# automated_strike -- there is no catcher term at all. So
-# catcher_effect (and catcher_season_effect) here is exactly the
-# value that disappears under ABS, and unlike Model 3, the sign
-# tells you whether that catcher currently GAINS strikes (positive)
-# or LOSES them (negative) relative to the true zone.
-# ============================================================
-
-
-# ============================================================
 # CONFIGURATION
-# ============================================================
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 
@@ -45,10 +19,7 @@ FALLBACK_TRACE_FILE = PROCESSED_DIR / "bayesian_model_4_framing_value_trace.pkl"
 PLOT_FILE = PROCESSED_DIR / "bayesian_model_4_framing_value.png"
 
 
-# ============================================================
 # SAMPLING SETTINGS -- matched to your Model 3 settings
-# ============================================================
-
 DRAWS = 1000
 TUNE = 2000
 CHAINS = 4
@@ -67,37 +38,18 @@ MIN_CATCHER_ESS = 400
 # MLB plate width = 17 inches -> half-width in feet
 PLATE_HALF_WIDTH = 17 / 24
 
-# Runs added per called strike vs. called ball. Swap in your own
-# run-expectancy-based value if you have one.
+# Runs added per called strike vs. called ball.
 RUNS_PER_STRIKE = 0.125
 
 
-# ============================================================
 # LOAD DATA
-# ============================================================
-
 def load_data():
-
-    print("=" * 60)
-    print("MODEL 4: CATCHER FRAMING VALUE VS. TRUE AUTOMATED ZONE")
-    print("=" * 60)
-    print("\nLoading data...")
-
     data = pd.read_csv(INPUT_FILE)
-
     print(f"Loaded {len(data):,} pitches.")
-
     return data
-
-
-# ============================================================
-# PREPARE DATA -- mirrors Model 3's automated_strike construction
-# ============================================================
-
+    
+# PREPARE DATA
 def prepare_data(data):
-
-    print("\nPreparing Model 4 data...")
-
     data = data.copy()
 
     data["game_date"] = pd.to_datetime(data["game_date"], errors="coerce")
@@ -125,12 +77,7 @@ def prepare_data(data):
         data[column] = pd.to_numeric(data[column], errors="coerce")
     data = data.dropna(subset=numeric_columns).copy()
 
-    # --------------------------------------------------------
     # TRUE automated strike zone (same construction as Model 2/3)
-    # --------------------------------------------------------
-
-    print("\nConstructing counterfactual automated strike zone...")
-
     horizontal_in_zone = data["plate_x"].abs() <= PLATE_HALF_WIDTH
     vertical_in_zone = (
         (data["plate_z"] >= data["sz_bot"])
@@ -149,10 +96,7 @@ def prepare_data(data):
 
     data = data.sort_values("game_date").reset_index(drop=True)
 
-    # --------------------------------------------------------
     # Catcher filter
-    # --------------------------------------------------------
-
     catcher_counts = data["catcher"].value_counts()
     valid_catchers = catcher_counts[
         catcher_counts >= MIN_CATCHER_PITCHES
@@ -165,10 +109,7 @@ def prepare_data(data):
     data = data.dropna(subset=["catcher"]).copy()
     data["catcher"] = data["catcher"].astype(int)
 
-    # --------------------------------------------------------
     # Development sample
-    # --------------------------------------------------------
-
     if MAX_MODEL_PITCHES is not None and len(data) > MAX_MODEL_PITCHES:
 
         print("\nDataset is large.")
@@ -190,10 +131,7 @@ def prepare_data(data):
 
         print(f"Development dataset: {len(data):,} pitches")
 
-    # --------------------------------------------------------
     # Encode catchers
-    # --------------------------------------------------------
-
     catcher_values = sorted(data["catcher"].unique())
     catcher_map = {c: i for i, c in enumerate(catcher_values)}
     data["catcher_idx"] = data["catcher"].map(catcher_map).astype(int)
@@ -213,10 +151,7 @@ def prepare_data(data):
             "effect will be partially pooled toward the prior."
         )
 
-    # --------------------------------------------------------
     # Categorical variables
-    # --------------------------------------------------------
-
     pitch_categories = sorted(data["pitch_type"].astype(str).unique())
     pitch_map = {v: i for i, v in enumerate(pitch_categories)}
     data["pitch_type_idx"] = data["pitch_type"].astype(str).map(pitch_map).astype(int)
@@ -231,15 +166,8 @@ def prepare_data(data):
 
     data["season_idx"] = (data["season"] == 2026).astype(int)
 
-    # --------------------------------------------------------
-    # Standardize continuous predictors (NOT automated_strike --
-    # it stays a clean 0/1 indicator, same as Model 2/3's approach
-    # to plate_x/plate_z)
-    # --------------------------------------------------------
-
+    # Standardize continuous predictors
     continuous = ["release_speed", "pfx_x", "pfx_z", "balls", "strikes"]
-
-    print("\nStandardizing continuous predictors...")
 
     for column in continuous:
         mean = data[column].mean()
@@ -264,10 +192,7 @@ def prepare_data(data):
     )
 
 
-# ============================================================
 # BUILD BAYESIAN MODEL
-# ============================================================
-
 def build_model(
     data, catcher_values, pitch_categories, stand_categories, throws_categories
 ):
@@ -305,13 +230,7 @@ def build_model(
 
         intercept = pm.Normal("intercept", mu=0, sigma=1)
 
-        # ----------------------------------------------------
-        # TRUE ZONE STATUS -- the key predictor that Model 3
-        # did NOT include. This is the dominant driver of the
-        # umpire's call; catcher_effect measures deviation
-        # from this ground truth.
-        # ----------------------------------------------------
-
+        # TRUE ZONE STATUS
         beta_automated_strike = pm.Normal(
             "beta_automated_strike", mu=0, sigma=2
         )
@@ -385,15 +304,8 @@ def build_model(
     return model
 
 
-# ============================================================
 # SAMPLE MODEL
-# ============================================================
-
 def sample_model(model):
-
-    print("\n" + "=" * 60)
-    print("STARTING MODEL 4 BAYESIAN SAMPLING")
-    print("=" * 60)
     print(f"\nChains: {CHAINS}")
     print(f"Tuning draws: {TUNE}")
     print(f"Posterior draws: {DRAWS}")
@@ -422,16 +334,8 @@ def sample_model(model):
     return trace
 
 
-# ============================================================
-# DIAGNOSTICS -- same structure as Model 3
-# ============================================================
-
+# DIAGNOSTICS
 def diagnostics(trace):
-
-    print("\n" + "=" * 60)
-    print("MODEL 4 BAYESIAN DIAGNOSTICS")
-    print("=" * 60)
-
     divergences = int(trace.sample_stats["diverging"].sum().values)
     total_draws = CHAINS * DRAWS
     divergence_rate = divergences / total_draws
@@ -478,13 +382,8 @@ def diagnostics(trace):
 
     return summary, catcher_summary, catcher_converged
 
-
-# ============================================================
 # EXTRACT CATCHER EFFECTS
-# ============================================================
-
 def extract_catcher_effects(trace, catcher_values):
-
     print("\nExtracting Model 4 catcher effects...")
 
     catcher_samples = (
@@ -520,19 +419,8 @@ def extract_catcher_effects(trace, catcher_values):
     return pd.DataFrame(results)
 
 
-# ============================================================
 # CONVERT CATCHER EFFECTS DIRECTLY TO FRAMING RUNS
-#
-# Because automated_strike is now a MODEL PREDICTOR (not just an
-# omitted baseline), catcher_effect here is already the correct,
-# directional log-odds shift. Converting to runs no longer needs
-# a separate replay script over raw pitches with an approximated
-# baseline -- we can do it with a simple average-marginal-effect
-# approximation using each catcher's actual pitch count.
-# ============================================================
-
 def add_runs_estimate(results, data):
-
     pitch_counts_2025 = (
         data[data["season"] == 2025]["catcher"].value_counts()
     )
@@ -544,12 +432,6 @@ def add_runs_estimate(results, data):
     results["pitches_2025"] = results["catcher"].map(pitch_counts_2025).fillna(0)
     results["pitches_2026"] = results["catcher"].map(pitch_counts_2026).fillna(0)
 
-    # Average marginal effect at p=0.5 approximation: d(sigmoid)/d(eta) is
-    # maximized at 0.5, so this is a conservative (upper-bound-ish) estimate.
-    # For a tighter estimate, replay actual per-pitch probabilities as in
-    # the earlier framing_value_eliminated_by_abs.py script, substituting
-    # this model's eta (intercept + beta_automated_strike*automated_strike
-    # + context) as the baseline instead of the plate_x/z approximation.
     marginal_effect_factor = 0.25  # sigmoid'(0) upper bound
 
     results["extra_strikes_2025"] = (
@@ -565,12 +447,8 @@ def add_runs_estimate(results, data):
     return results
 
 
-# ============================================================
-# PLOT / PRINT -- same structure as Model 3
-# ============================================================
-
+# PLOT
 def plot_results(results):
-
     plot_data = results.sort_values("change").copy()
     plt.figure(figsize=(10, 12))
     y = np.arange(len(plot_data))
@@ -590,10 +468,7 @@ def plot_results(results):
 
 
 def print_results(results):
-
-    print("\n" + "=" * 60)
     print("MODEL 4 RESULTS -- FRAMING VALUE ELIMINATED BY ABS")
-    print("=" * 60)
 
     print(
         "\nPositive framing_runs_2026 = catcher currently GAINS strikes "
@@ -625,7 +500,6 @@ def print_results(results):
 
 
 def save_trace(trace):
-
     print("\nSaving Model 4 Bayesian trace...")
     try:
         trace.to_netcdf(TRACE_FILE)
@@ -635,11 +509,6 @@ def save_trace(trace):
         with open(FALLBACK_TRACE_FILE, "wb") as file:
             pickle.dump(trace, file)
         print(f"Saved fallback trace to:\n  {FALLBACK_TRACE_FILE}")
-
-
-# ============================================================
-# MAIN
-# ============================================================
 
 def main():
 
@@ -677,16 +546,8 @@ def main():
     print_results(results)
     plot_results(results)
 
-    print("\n" + "=" * 60)
+    print("\n")
     print("MODEL 4 COMPLETE")
-    print("=" * 60)
-    print(
-        "\nframing_runs_2026 is a directional, run-valued estimate of "
-        "each catcher's framing skill relative to the TRUE automated "
-        "zone -- exactly the value a fully automated strike zone would "
-        "eliminate."
-    )
-
 
 if __name__ == "__main__":
     main()
