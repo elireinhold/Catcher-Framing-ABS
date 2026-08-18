@@ -61,5 +61,6 @@ You can search the catcher ID on Baseball-Savants to find a catcher's name.
 ## Conclusion
 Overall, I can conclude that the introduction of ABS in 2026 has not eliminated or signifcantly effect the overall value of catcher framing.
 Some players who might have struggled under the old system prosper under the new ABS, while some players are the opposite or
-just remain the same. This phenomenon occurs in many settings as people have to adapt to new changes in environments. 
-However, if ABS were to fully eliminate human umpiring, then of course the art of catcher framing would be obsolete.
+just remain the same. This phenomenon occurs in many settings as people have to adapt to new changes in environments. However, the total value
+in motion is only ~52 across an entire season full of 2430 games, indicating that catcher framing is not very valuable in general.
+If ABS were to fully eliminate human umpiring, then of course the art of catcher framing would be obsolete.
