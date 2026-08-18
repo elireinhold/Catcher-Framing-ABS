@@ -1,3 +1,4 @@
+# The model predicts call-strike probability using pitch location only
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -10,11 +11,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 
-
-# ============================================================
 # Configuration
-# ============================================================
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 FIGURES_DIR = PROJECT_ROOT / "figures"
@@ -25,29 +22,17 @@ INPUT_FILE = PROCESSED_DIR / "model_data_2025_2026.csv"
 OUTPUT_FILE = PROCESSED_DIR / "baseline_predictions_2025_2026.csv"
 
 
-# ============================================================
 # Load data
-# ============================================================
-
 def load_data():
-    print("=" * 60)
-    print("MODEL 1: LOCATION-BASED LOGISTIC REGRESSION")
-    print("=" * 60)
-
     data = pd.read_csv(INPUT_FILE)
-
     print(f"\nLoaded {len(data):,} pitches.")
-
     return data
 
-
-# ============================================================
 # Create location features
-# ============================================================
-
 def create_features(data):
     data = data.copy()
 
+    # pitches must have plate location, strike call, date
     required = [
         "plate_x",
         "plate_z",
@@ -64,14 +49,9 @@ def create_features(data):
 
     return data, X, y
 
-
-# ============================================================
 # Chronological split
-# ============================================================
-
 def chronological_split(data, X, y):
-    # Sort by date so future pitches are never used to predict
-    # earlier pitches.
+    # Sort by date so future pitches are never used to predict earlier pitches
     order = data["game_date"].sort_values().index
 
     data = data.loc[order].reset_index(drop=True)
@@ -80,6 +60,7 @@ def chronological_split(data, X, y):
 
     split_index = int(len(data) * 0.80)
 
+    # Split into train and test (80/20)
     train_data = data.iloc[:split_index].copy()
     test_data = data.iloc[split_index:].copy()
 
@@ -98,14 +79,8 @@ def chronological_split(data, X, y):
         y_test,
     )
 
-
-# ============================================================
-# Train model
-# ============================================================
-
+# Train model (logistic regression)
 def train_model(X_train, y_train):
-    # Degree 3 gives the model flexibility to learn the shape of
-    # the called-strike probability surface.
     model = make_pipeline(
         PolynomialFeatures(
             degree=3,
@@ -115,39 +90,31 @@ def train_model(X_train, y_train):
             max_iter=2000
         )
     )
-
     model.fit(X_train, y_train)
-
     return model
 
-
-# ============================================================
 # Evaluation
-# ============================================================
-
 def evaluate_model(model, X_test, y_test):
     probabilities = model.predict_proba(X_test)[:, 1]
     predictions = (probabilities >= 0.5).astype(int)
 
-    print("\n" + "=" * 60)
+    print("\n")
     print("MODEL EVALUATION")
-    print("=" * 60)
 
     print(f"\nAccuracy:  {accuracy_score(y_test, predictions):.4f}")
     print(f"Log Loss:  {log_loss(y_test, probabilities):.4f}")
     print(f"ROC AUC:   {roc_auc_score(y_test, probabilities):.4f}")
 
     return probabilities
-
-
-# ============================================================
+    
 # Catcher residual analysis
-# ============================================================
-
 def catcher_analysis(test_data, probabilities):
     results = test_data.copy()
 
     results["expected_strike_probability"] = probabilities
+    # Residual = called_strike(1 or 0) - expected_strike_probability
+    # A positive residual means a strike was called on a pitch that was expected to be a ball (good framing)
+    # A negative residual means a ball was called on a pitch that was expected to be a strike
     results["residual"] = (
         results["called_strike"]
         - results["expected_strike_probability"]
@@ -177,21 +144,15 @@ def catcher_analysis(test_data, probabilities):
         ascending=False
     )
 
-    print("\n" + "=" * 60)
+    print("\n")
     print("INITIAL CATCHER ANALYSIS")
-    print("=" * 60)
-
-    print(
-        "\nIMPORTANT:\n"
-        "These are NOT Bayesian catcher framing estimates.\n"
-        "They are catcher-level averages of prediction residuals."
-    )
 
     print(
         f"\nCatchers with >= 50 pitches: "
         f"{len(catcher_summary)}"
     )
 
+    # Highest residuals
     print("\nHighest positive residuals:")
     print(
         catcher_summary.head(15)
@@ -199,6 +160,7 @@ def catcher_analysis(test_data, probabilities):
         .to_string(index=False)
     )
 
+    # Lowest residuals
     print("\nLowest residuals:")
     print(
         catcher_summary.tail(15)
@@ -210,14 +172,10 @@ def catcher_analysis(test_data, probabilities):
     return results, catcher_summary
 
 
-# ============================================================
-# Season-specific comparison
-# ============================================================
-
+# Comparison betweeen 2025 and 2026(ABS)
 def season_analysis(results):
-    print("\n" + "=" * 60)
+    print("\n")
     print("2025 vs 2026 BASELINE COMPARISON")
-    print("=" * 60)
 
     summary = (
         results
@@ -240,10 +198,8 @@ def season_analysis(results):
     )
 
 
-# ============================================================
 # Plot probability surface
-# ============================================================
-
+# Creates a heat map showing most likely area to be called strike (saved to baseline_probability_surface_2025_2026)
 def create_probability_plot(model, data):
     x_min = data["plate_x"].quantile(0.01)
     x_max = data["plate_x"].quantile(0.99)
@@ -292,18 +248,9 @@ def create_probability_plot(model, data):
 
     print(f"\nSaved probability surface to:\n  {output}")
 
-
-# ============================================================
-# Main
-# ============================================================
-
 def main():
     data = load_data()
-
     data, X, y = create_features(data)
-
-    print("\nCreating chronological train/test split...")
-
     (
         train_data,
         test_data,
@@ -356,21 +303,6 @@ def main():
     )
 
     print(f"\nSaved predictions to:\n  {OUTPUT_FILE}")
-
-    print("\n" + "=" * 60)
-    print("MODEL 1 COMPLETE")
-    print("=" * 60)
-
-    print(
-        "\nThe model predicts called-strike probability "
-        "using pitch location only."
-    )
-
-    print(
-        "\nThe catcher residuals are exploratory."
-        "\nThey are NOT the final framing estimates."
-    )
-
 
 if __name__ == "__main__":
     main()
