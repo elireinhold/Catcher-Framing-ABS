@@ -8,10 +8,7 @@ import pandas as pd
 import pymc as pm
 
 
-# ============================================================
 # CONFIGURATION
-# ============================================================
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 
@@ -35,89 +32,29 @@ PLOT_FILE = (
     PROCESSED_DIR / "bayesian_catcher_effects.png"
 )
 
-
-# ============================================================
-# SAMPLING SETTINGS
-# ============================================================
-
-# ------------------------------------------------------------
 # DEVELOPMENT SETTINGS
-# ------------------------------------------------------------
-
 DRAWS = 500
-TUNE = 1500  # CHANGED: more tuning helps NUTS adapt step size/mass matrix
-             # in the harder geometry created by the hierarchical terms.
-
-# More chains improves convergence diagnostics.
+TUNE = 1500
 CHAINS = 4
-
-# ------------------------------------------------------------
-# IMPORTANT:
-# Use one core initially on Windows.
-#
-# This avoids the g++ / multiprocessing issue and makes
-# debugging much easier.
-# ------------------------------------------------------------
-
-CORES = 1
-
+CORES = 12
 RANDOM_SEED = 42
-
-# CHANGED: 0.95 -> 0.99. Forces smaller step sizes through the
-# tight/curved regions of the posterior (typical with nested
-# hierarchical + quadratic terms), which is the single most
-# effective divergence fix short of reparameterizing.
 TARGET_ACCEPT = 0.99
-
-# ADDED: NUTS's default max_treedepth (10) can silently cap
-# trajectory length before target_accept is satisfied, which
-# looks like divergences/poor mixing. Raising this gives NUTS
-# room to actually use the smaller step size above.
 MAX_TREEDEPTH = 14
 
-# ------------------------------------------------------------
-# Catcher filtering
-# ------------------------------------------------------------
-
+# Limit number of pitches to ensure there is enough data
 MIN_CATCHER_PITCHES = 100
-
-# ------------------------------------------------------------
-# Development sample
-#
-# Start with 100k rather than 150k.
-#
-# Once the model converges, increase this to 150k or remove
-# the limit entirely.
-# ------------------------------------------------------------
-
 MAX_MODEL_PITCHES = 100_000
 
 
-# ============================================================
 # LOAD DATA
-# ============================================================
-
 def load_data():
-
-    print("=" * 60)
-    print("BAYESIAN CATCHER FRAMING MODEL")
-    print("=" * 60)
-
-    print("\nLoading data...")
-
     data = pd.read_csv(INPUT_FILE)
-
     print(
         f"Loaded {len(data):,} pitches."
     )
-
     return data
 
-
-# ============================================================
 # PREPARE DATA
-# ============================================================
-
 def prepare_data(data):
 
     print("\nPreparing Bayesian modeling data...")
