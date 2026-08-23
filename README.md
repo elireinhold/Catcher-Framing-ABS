@@ -64,3 +64,6 @@ Some players who might have struggled under the old system prosper under the new
 just remain the same. This phenomenon occurs in many settings as people have to adapt to new changes in environments. I also did not factor in things like injuries, age, and league experience that could affect catchers and their framing abilities between seasons. The total value
 in motion is only ~52 across an entire season full of 2430 games, indicating that catcher framing is not very valuable in general.
 If ABS were to fully eliminate human umpiring, then of course the art of catcher framing would be obsolete.
+
+## AI-Assisted Development
+I used AI to help build, debug, and refine the Bayesian models, while independently evaluating modeling decisions and interpreting results. This process strengthened my skills in Bayesian modeling, statistical inference, and applied machine learning.
