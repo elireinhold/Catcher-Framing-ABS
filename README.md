@@ -17,8 +17,7 @@ This project compares the value of catcher framing in 2025 and 2026 to investiga
 
 ## Data
 
-- Statcast pitch-level data, 2025 full season and 2026 season through
-  2026-08-16 (~625,000 pitches after filtering).
+- Statcast pitch-level data from Baseball Savant, covering the 2025 full season and the 2026 season through August 16 (~625,000 pitches after filtering), collected using `pybaseball`.
 - Batter-specific strike zone bounds (`sz_top`, `sz_bot`) used to construct
   a ground-truth automated-zone indicator for every pitch.
 - Catchers with fewer than 100 total pitches were excluded (141 qualified
