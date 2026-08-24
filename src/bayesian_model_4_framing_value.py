@@ -19,7 +19,7 @@ FALLBACK_TRACE_FILE = PROCESSED_DIR / "bayesian_model_4_framing_value_trace.pkl"
 PLOT_FILE = PROCESSED_DIR / "bayesian_model_4_framing_value.png"
 
 
-# SAMPLING SETTINGS -- matched to your Model 3 settings
+# SAMPLING SETTINGS (Same as Model 3)
 DRAWS = 1000
 TUNE = 2000
 CHAINS = 4
